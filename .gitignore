@@ -31,3 +31,8 @@ htmlcov/
 # Build
 dist/
 build/
+node_modules/
+
+# Local databases and storage
+backend/data/
+qdrant_data/

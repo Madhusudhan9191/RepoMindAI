@@ -1,10 +1,5 @@
 from pathlib import Path
 
-from pathlib import Path
-
-
-from pathlib import Path
-
 
 class RepositoryScanner:
 
@@ -43,6 +38,11 @@ class RepositoryScanner:
         return self.LANGUAGE_MAP.get(file_path.suffix.lower(), "Unknown")
 
     def scan(self):
+        if not self.repo_path.exists() or not self.repo_path.is_dir():
+            raise FileNotFoundError(
+                f"Repository path '{self.repo_path}' is not a valid directory."
+            )
+
         inventory = []
 
         for file in self.repo_path.rglob("*"):
