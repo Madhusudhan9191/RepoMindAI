@@ -11,6 +11,7 @@ export default function Sidebar({
   onClearIndex,
   isIndexing,
   isClearing,
+  isUpdatingSettings,
   addToast,
   onResetConversation,
   completedTurns,
@@ -21,6 +22,20 @@ export default function Sidebar({
   const [apiKey, setApiKey] = useState("");
   const [apiBase, setApiBase] = useState(settings?.api_base || "");
   const [repoPath, setRepoPath] = useState(".");
+
+  const DEFAULT_MODELS = {
+    mock: "mock-model",
+    ollama: "llama3",
+    openai: "gpt-4o",
+    gemini: "gemini-2.5-flash"
+  };
+
+  const handleProviderChange = (newProvider) => {
+    setProvider(newProvider);
+    if (!model || model === "mock-gpt-4o" || Object.values(DEFAULT_MODELS).includes(model)) {
+      setModel(DEFAULT_MODELS[newProvider] || "gemini-2.5-flash");
+    }
+  };
 
   const handleSaveSettings = (e) => {
     e.preventDefault();
@@ -93,7 +108,7 @@ export default function Sidebar({
               <select
                 className="input-field"
                 value={provider}
-                onChange={(e) => setProvider(e.target.value)}
+                onChange={(e) => handleProviderChange(e.target.value)}
               >
                 <option value="mock">Mock LLM</option>
                 <option value="ollama">Ollama (Local)</option>
@@ -107,7 +122,7 @@ export default function Sidebar({
               <input
                 type="text"
                 className="input-field"
-                placeholder="e.g. gpt-4o, llama3"
+                placeholder="e.g. gpt-4o, gemini-2.5-flash"
                 value={model}
                 onChange={(e) => setModel(e.target.value)}
               />
@@ -139,8 +154,14 @@ export default function Sidebar({
               </div>
             )}
 
-            <button type="submit" className="btn btn-secondary" style={{ marginTop: "4px" }}>
-              Apply Changes
+            <button type="submit" className="btn btn-secondary" disabled={isUpdatingSettings} style={{ marginTop: "4px" }}>
+              {isUpdatingSettings ? (
+                <>
+                  <Loader2 size={14} className="animate-spin" /> Applying...
+                </>
+              ) : (
+                "Apply Changes"
+              )}
             </button>
           </form>
         </section>

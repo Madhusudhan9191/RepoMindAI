@@ -517,7 +517,7 @@ def get_settings():
 
 
 @app.post("/api/v1/settings", response_model=SettingsResponse)
-def update_settings(payload: SettingsRequest, current_user: dict = Depends(get_current_user)):
+def update_settings(payload: SettingsRequest):
     try:
         container = get_container()
         container.configure_llm(
