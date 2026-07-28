@@ -37,6 +37,19 @@ export default function CitationDrawer({ citation, onClose, addToast }) {
             <span className="drawer-score-badge">
               Similarity: {(citation.score * 100).toFixed(1)}%
             </span>
+            <span
+              style={{
+                background: "rgba(99,102,241,0.18)",
+                color: "#a5b4fc",
+                padding: "2px 8px",
+                borderRadius: "12px",
+                fontSize: "11px",
+                fontWeight: "600",
+                border: "1px solid rgba(99,102,241,0.3)"
+              }}
+            >
+              AST: {citation.type || "Function/Class"}
+            </span>
           </div>
           <div style={{ display: "flex", gap: "8px" }}>
             <button className="btn btn-secondary" style={{ padding: "6px 12px" }} onClick={handleCopyCode}>
