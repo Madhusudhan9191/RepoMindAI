@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Settings, Database, List, Cpu, FileClock, Trash2, MessageSquare, RotateCcw } from "lucide-react";
+import { Settings, Database, List, Cpu, FileClock, Trash2, MessageSquare, RotateCcw, Loader2 } from "lucide-react";
 import TreeView from "./TreeView";
 
 export default function Sidebar({
@@ -164,7 +164,13 @@ export default function Sidebar({
             </div>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px", marginTop: "4px" }}>
               <button type="submit" className="btn" disabled={isIndexing}>
-                {isIndexing ? "Indexing..." : "Index Repo"}
+                {isIndexing ? (
+                  <>
+                    <Loader2 size={14} className="animate-spin" /> Indexing...
+                  </>
+                ) : (
+                  "Index Repo"
+                )}
               </button>
               <button
                 type="button"
@@ -173,7 +179,15 @@ export default function Sidebar({
                 disabled={isClearing}
                 title="Wipe database vectors"
               >
-                <Trash2 size={14} /> Clear Index
+                {isClearing ? (
+                  <>
+                    <Loader2 size={14} className="animate-spin" /> Clearing...
+                  </>
+                ) : (
+                  <>
+                    <Trash2 size={14} /> Clear Index
+                  </>
+                )}
               </button>
             </div>
           </form>

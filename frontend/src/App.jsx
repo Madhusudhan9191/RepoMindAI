@@ -370,8 +370,8 @@ export default function App() {
         onUpdateSettings={updateSettingsMutation.mutate}
         onRunIndexing={handleIndexingTrigger}
         onClearIndex={clearIndexMutation.mutate}
-        isIndexing={runIndexingMutation.isLoading}
-        isClearing={clearIndexMutation.isLoading}
+        isIndexing={runIndexingMutation.isPending || runIndexingMutation.isLoading}
+        isClearing={clearIndexMutation.isPending || clearIndexMutation.isLoading}
         addToast={addToast}
         onResetConversation={handleResetConversation}
         completedTurns={completedTurns}
