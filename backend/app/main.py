@@ -356,7 +356,7 @@ def refresh(payload: RefreshRequest):
 # --- Secured Application Routes ---
 
 @app.get("/api/v1/stats", response_model=StatsResponse)
-def get_stats(current_user: dict = Depends(get_current_user)):
+def get_stats():
     try:
         container = get_container()
         
@@ -379,7 +379,7 @@ def get_stats(current_user: dict = Depends(get_current_user)):
 
 
 @app.post("/api/v1/ask", response_model=QueryResponse, dependencies=[Depends(limit_rag_requests)])
-def ask(payload: QueryRequest, current_user: dict = Depends(get_current_user)):
+def ask(payload: QueryRequest):
     container = get_container()
     history = [t.model_dump() for t in payload.history] if payload.history else None
     response_data = container.rag_service.answer(
@@ -394,7 +394,7 @@ def ask(payload: QueryRequest, current_user: dict = Depends(get_current_user)):
 FEEDBACK_DB = {}
 
 @app.post("/api/v1/feedback")
-def submit_feedback(payload: FeedbackRequest, current_user: dict = Depends(get_current_user)):
+def submit_feedback(payload: FeedbackRequest):
     feedback_logger = logging.getLogger("backend.app.feedback")
     
     req_id = payload.request_id.strip()
@@ -429,7 +429,7 @@ def submit_feedback(payload: FeedbackRequest, current_user: dict = Depends(get_c
 
 
 @app.post("/api/v1/ask/stream", dependencies=[Depends(limit_rag_requests)])
-def ask_stream(payload: QueryRequest, current_user: dict = Depends(get_current_user)):
+def ask_stream(payload: QueryRequest):
     """
     Streaming RAG endpoint.
     """
@@ -468,7 +468,7 @@ def ask_stream(payload: QueryRequest, current_user: dict = Depends(get_current_u
 
 
 @app.post("/api/v1/index", response_model=IndexResponse)
-def run_indexing(payload: IndexRequest, current_user: dict = Depends(get_current_user)):
+def run_indexing(payload: IndexRequest):
     container = get_container()
     
     if payload.clear_existing:
@@ -481,7 +481,7 @@ def run_indexing(payload: IndexRequest, current_user: dict = Depends(get_current
 
 
 @app.delete("/api/v1/index")
-def clear_index(current_user: dict = Depends(get_current_user)):
+def clear_index():
     try:
         container = get_container()
         container.qdrant_service.clear()
@@ -493,7 +493,7 @@ def clear_index(current_user: dict = Depends(get_current_user)):
 
 
 @app.get("/api/v1/settings", response_model=SettingsResponse)
-def get_settings(current_user: dict = Depends(get_current_user)):
+def get_settings():
     try:
         container = get_container()
         provider_name = type(container.llm_service).__name__
@@ -548,7 +548,7 @@ def update_settings(payload: SettingsRequest, current_user: dict = Depends(get_c
 
 
 @app.get("/api/v1/files")
-def get_files(repo_path: str = ".", current_user: dict = Depends(get_current_user)):
+def get_files(repo_path: str = "."):
     try:
         from backend.app.ingestion.scanner import RepositoryScanner
         scanner = RepositoryScanner(repo_path)
