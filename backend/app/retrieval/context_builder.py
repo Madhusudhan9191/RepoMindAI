@@ -40,7 +40,8 @@ class ContextBuilder:
                 "type": payload["type"],
                 "start_line": int(payload["start_line"]),
                 "end_line": int(payload["end_line"]),
-                "score": round(float(result.score), 4)
+                "score": round(float(result.score), 4),
+                "content": payload.get("content", "")
             }
             citations.append(citation)
 
