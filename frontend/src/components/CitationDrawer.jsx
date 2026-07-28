@@ -1,11 +1,14 @@
-import React, { useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import Prism from "prismjs";
-import { X, Copy, Terminal } from "lucide-react";
+import { X, Copy, Check, Terminal } from "lucide-react";
 
 export default function CitationDrawer({ citation, onClose, addToast }) {
+  const [isCopied, setIsCopied] = useState(false);
+
   useEffect(() => {
     if (citation) {
       Prism.highlightAll();
+      setIsCopied(false);
     }
   }, [citation]);
 
@@ -15,7 +18,11 @@ export default function CitationDrawer({ citation, onClose, addToast }) {
     if (citation.text || citation.content) {
       const code = citation.text || citation.content;
       navigator.clipboard.writeText(code);
-      addToast("Code snippet copied to clipboard!", "success");
+      setIsCopied(true);
+      if (addToast) addToast("Code snippet copied to clipboard!", "success");
+      setTimeout(() => {
+        setIsCopied(false);
+      }, 2000);
     }
   };
 
@@ -52,8 +59,26 @@ export default function CitationDrawer({ citation, onClose, addToast }) {
             </span>
           </div>
           <div style={{ display: "flex", gap: "8px" }}>
-            <button className="btn btn-secondary" style={{ padding: "6px 12px" }} onClick={handleCopyCode}>
-              <Copy size={14} /> Copy Code
+            <button
+              className="btn btn-secondary"
+              style={{
+                padding: "6px 12px",
+                borderColor: isCopied ? "var(--success)" : undefined,
+                color: isCopied ? "#a7f3d0" : undefined,
+                background: isCopied ? "rgba(16, 185, 129, 0.15)" : undefined,
+                transition: "all 0.2s ease"
+              }}
+              onClick={handleCopyCode}
+            >
+              {isCopied ? (
+                <>
+                  <Check size={14} style={{ color: "#10b981" }} /> Copied!
+                </>
+              ) : (
+                <>
+                  <Copy size={14} /> Copy Code
+                </>
+              )}
             </button>
             <button
               onClick={onClose}
