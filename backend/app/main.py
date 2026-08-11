@@ -30,11 +30,25 @@ from backend.app.ingestion.ingest_pipeline import IngestionPipeline
 
 from fastapi.middleware.cors import CORSMiddleware
 
+from contextlib import asynccontextmanager
+
 logger = logging.getLogger(__name__)
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Lifespan context manager handling startup database initialization and shutdown resource cleanup."""
+    init_db()
+    yield
+    try:
+        container = get_container()
+        container.close()
+    except Exception as e:
+        logger.error(f"Error closing container on shutdown: {str(e)}")
 
 app = FastAPI(
     title="RepoMindAI",
-    version="1.0.0"
+    version="1.0.0",
+    lifespan=lifespan
 )
 
 app.add_middleware(
@@ -44,24 +58,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-# --------------------------------------------------
-# FastAPI Event Handlers
-# --------------------------------------------------
-
-@app.on_event("startup")
-def on_startup():
-    """Initializes tables on startup."""
-    init_db()
-
-@app.on_event("shutdown")
-def on_shutdown():
-    """Closes all connection pools and resources cleanly on shutdown."""
-    try:
-        container = get_container()
-        container.close()
-    except Exception as e:
-        logger.error(f"Error closing container on shutdown: {str(e)}")
 
 # --------------------------------------------------
 # FastAPI Exception Handlers
@@ -355,7 +351,7 @@ def refresh(payload: RefreshRequest):
 
 # --- Secured Application Routes ---
 
-@app.get("/api/v1/stats", response_model=StatsResponse)
+@app.get("/api/v1/stats", response_model=StatsResponse, dependencies=[Depends(get_current_user)])
 def get_stats():
     try:
         container = get_container()

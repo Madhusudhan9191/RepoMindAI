@@ -36,3 +36,4 @@ node_modules/
 # Local databases and storage
 backend/data/
 qdrant_data/
+.file_hashes.json

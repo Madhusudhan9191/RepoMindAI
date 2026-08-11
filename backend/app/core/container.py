@@ -56,12 +56,17 @@ class Container:
         # Shared Context Compressor
         self.context_compressor = ContextCompressor()
 
+        # Shared BM25 Retriever
+        from backend.app.retrieval.bm25_retriever import BM25Retriever
+        self.bm25_retriever = BM25Retriever()
+
         # Shared Retriever
         self.retriever = Retriever(
             embedding_service=self.embedding_service,
             qdrant_service=self.qdrant_service,
             reranker_service=self.reranker_service,
             compressor=self.context_compressor,
+            bm25_retriever=self.bm25_retriever,
         )
 
         # Shared Context Builder

@@ -51,17 +51,17 @@ def resolve_rate_limit_key(request: Optional[Request], current_user: Optional[di
 
 
 # Read limits from environment variables (with fallback defaults)
-RATE_LIMIT_RAG = int(os.getenv("RATE_LIMIT_RAG", "10"))
+RATE_LIMIT_RAG = int(os.getenv("RATE_LIMIT_RAG", "100"))
 RATE_LIMIT_AUTH = int(os.getenv("RATE_LIMIT_AUTH", "20"))
 
 rag_limiter = RateLimiter(requests_limit=RATE_LIMIT_RAG, window_seconds=60)
 auth_limiter = RateLimiter(requests_limit=RATE_LIMIT_AUTH, window_seconds=60)
 
-def limit_rag_requests(request: Request, current_user: Optional[dict] = Depends(get_current_user)):
+def limit_rag_requests(request: Request):
     """
     FastAPI dependency to rate limit RAG operations.
     """
-    key = resolve_rate_limit_key(request, current_user)
+    key = resolve_rate_limit_key(request, None)
     rag_limiter.check(key)
 
 def limit_auth_requests(request: Request):

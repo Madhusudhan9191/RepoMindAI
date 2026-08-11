@@ -7,15 +7,18 @@ logger = logging.getLogger(__name__)
 
 class RerankerService:
     """
-    Reranks candidate code chunks using a Cross-Encoder transformer model.
-    Optimizes for precision by processing the query and document content
-    jointly through self-attention layers.
+    Reranks candidate code chunks using explicit hybrid scoring:
+    hybrid_score = alpha * dense_similarity + beta * normalized_bm25 + gamma * symbol_overlap
+    with optional Cross-Encoder transformer model execution.
     """
 
     MODEL_NAME = "cross-encoder/ms-marco-MiniLM-L-6-v2"
 
-    def __init__(self, model_name: str = None):
+    def __init__(self, model_name: str = None, alpha: float = 0.5, beta: float = 0.3, gamma: float = 0.2):
         self.model_name = model_name or os.getenv("RERANKER_MODEL", self.MODEL_NAME)
+        self.alpha = alpha
+        self.beta = beta
+        self.gamma = gamma
         self._model = None
 
     @property
@@ -25,66 +28,71 @@ class RerankerService:
         to keep application startup fast and offline-friendly.
         """
         if self._model is None:
-            # We import only when the model is loaded to avoid loading sentence_transformers on startup
             from sentence_transformers import CrossEncoder
             logger.info(f"Loading CrossEncoder model: {self.model_name}...")
             self._model = CrossEncoder(self.model_name)
         return self._model
 
-    def rerank(self, query: str, candidate_points: List) -> List:
+    def rerank(self, query: str, candidate_points: List, alpha: float = None, beta: float = None, gamma: float = None) -> List:
         """
-        Computes joint attention scores for candidate points against the query
-        in a single batch call. Annotates each point with a `rerank_score`
-        key in its payload dictionary and returns the sorted candidates (highest score first).
+        Computes explicit hybrid scores for candidate points against the query:
+        hybrid_score = alpha * dense_score + beta * bm25_score + gamma * symbol_overlap
 
-        If the model name contains 'mock', offline mock scoring is executed
-        (using lexical overlap + length coefficient + original score).
+        Annotates each point with `rerank_score` and `hybrid_score` in its payload.
         """
         if not candidate_points:
             return []
 
-        # 1. Offline Mock Reranking logic
-        if "mock" in self.model_name.lower():
-            for point in candidate_points:
-                if point.payload is None:
-                    point.payload = {}
-                content = point.payload.get("content", "")
-                overlap = self._calculate_lexical_overlap(query, content)
-                # Score combines original similarity, lexical overlap boost, and length coefficient
-                point.payload["rerank_score"] = float(point.score + 0.1 * overlap + 0.0001 * len(content))
-            
-            return sorted(candidate_points, key=lambda p: p.payload.get("rerank_score", p.score), reverse=True)
+        a = alpha if alpha is not None else self.alpha
+        b = beta if beta is not None else self.beta
+        g = gamma if gamma is not None else self.gamma
 
-        # 2. Production Transformer Batch Reranking logic
-        try:
-            # Construct (query, document) pairs for all candidates
-            pairs = [[query, p.payload.get("content", "")] for p in candidate_points]
-            
-            # Predict relevance scores in a single batch
-            scores = self.model.predict(pairs)
-            
-            # Annotate points with their cross-encoder rerank score
-            for point, score in zip(candidate_points, scores):
-                if point.payload is None:
-                    point.payload = {}
-                point.payload["rerank_score"] = float(score)
+        # Find max BM25 score among candidates for normalization
+        max_bm25 = max([getattr(p, "bm25_score", p.payload.get("bm25_score", 0.0) if p.payload else 0.0) for p in candidate_points], default=1.0)
+        if max_bm25 <= 0:
+            max_bm25 = 1.0
 
-            # Return candidates sorted in descending order of rerank score
-            return sorted(candidate_points, key=lambda p: p.payload.get("rerank_score", p.score), reverse=True)
+        for point in candidate_points:
+            if point.payload is None:
+                point.payload = {}
 
-        except Exception as e:
-            logger.warning(f"Reranking failed (falling back to vector score): {str(e)}")
-            # If inference fails, fall back to sorting by original vector score
-            for point in candidate_points:
-                if point.payload is None:
-                    point.payload = {}
-                point.payload["rerank_score"] = float(point.score)
-            return sorted(candidate_points, key=lambda p: p.score, reverse=True)
+            dense_score = float(getattr(point, "score", point.payload.get("score", 0.0)))
+            bm25_raw = float(getattr(point, "bm25_score", point.payload.get("bm25_score", 0.0)))
+            norm_bm25 = bm25_raw / max_bm25
+
+            content = point.payload.get("content", "")
+            symbol_name = point.payload.get("name", "")
+            path_name = point.payload.get("path", "")
+            full_text = f"{path_name} {symbol_name} {content}"
+
+            overlap = self._calculate_lexical_overlap(query, full_text)
+
+            # Compute explicit hybrid score
+            hybrid_score = (a * dense_score) + (b * norm_bm25) + (g * overlap)
+
+            point.payload["dense_score"] = dense_score
+            point.payload["bm25_score"] = bm25_raw
+            point.payload["norm_bm25"] = norm_bm25
+            point.payload["symbol_overlap"] = overlap
+            point.payload["hybrid_score"] = float(hybrid_score)
+            point.payload["rerank_score"] = float(hybrid_score)
+
+        # If production CrossEncoder is explicitly loaded and not mock
+        if "mock" not in self.model_name.lower() and os.getenv("USE_CROSS_ENCODER", "false").lower() in ("true", "1"):
+            try:
+                pairs = [[query, p.payload.get("content", "")] for p in candidate_points]
+                scores = self.model.predict(pairs)
+                for point, score in zip(candidate_points, scores):
+                    point.payload["cross_encoder_score"] = float(score)
+                    point.payload["rerank_score"] = float(0.5 * point.payload["hybrid_score"] + 0.5 * score)
+            except Exception as e:
+                logger.warning(f"CrossEncoder inference skipped: {e}")
+
+        return sorted(candidate_points, key=lambda p: p.payload.get("rerank_score", p.score), reverse=True)
 
     def _calculate_lexical_overlap(self, query: str, document: str) -> float:
         """
         Calculates lexical word overlap ratio between query and document text.
-        Helps simulate semantic reranking offline without downloading model weights.
         """
         query_words = set(re.findall(r"\w+", query.lower()))
         doc_words = set(re.findall(r"\w+", document.lower()))
@@ -92,3 +100,4 @@ class RerankerService:
             return 0.0
         intersection = query_words.intersection(doc_words)
         return len(intersection) / len(query_words)
+

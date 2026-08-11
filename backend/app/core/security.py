@@ -102,8 +102,13 @@ def decode_access_token(token: str) -> Optional[dict]:
 def get_current_user(credentials: Optional[HTTPAuthorizationCredentials] = Depends(security_scheme)) -> dict:
     """
     FastAPI dependency to secure routes. Requires Authorization header containing valid JWT.
+    Supports REQUIRE_AUTH environment variable flag for toggling security mode.
     """
+    require_auth = os.getenv("REQUIRE_AUTH", "false").lower() in ("true", "1", "yes")
+
     if not credentials:
+        if not require_auth:
+            return {"id": "anonymous", "username": "anonymous"}
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Not authenticated",

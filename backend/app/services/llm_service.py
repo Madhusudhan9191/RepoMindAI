@@ -61,15 +61,17 @@ class MockLLMProvider(BaseLLMProvider):
             # Clear double spacing/cleanup
             return rewritten.strip()
 
-        # Regex search to extract files and functions present in context
-        files = list(set(re.findall(r"File:\s*([^\n\r]+)", user_content)))
-        functions = list(set(re.findall(r"Function:\s*([^\n\r]+)", user_content)))
-        
+        # Regex search to extract files and functions present in context in order
+        blocks = re.findall(r"File:\s*([^\n\r]+)\s*\nFunction:\s*([^\n\r]+)", user_content)
         citations = []
-        for f, func in zip(files, functions):
-            citations.append(f"`{f}` (function: `{func}`)")
+        seen = set()
+        for f, func in blocks:
+            key = (f.strip(), func.strip())
+            if key not in seen:
+                seen.add(key)
+                citations.append(f"`{f.strip()}` (function: `{func.strip()}`)")
             
-        citations_str = ", ".join(citations) if citations else "no files"
+        citations_str = ", ".join(citations) if citations else "retrieved repository files"
 
         return (
             f"[MOCK RESPONSE - MODEL: {self.model_name}]\n\n"

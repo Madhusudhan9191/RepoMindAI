@@ -2,7 +2,7 @@ import os
 
 # Set environment variables for testing before importing anything that initializes the Container
 os.environ["LLM_PROVIDER"] = "mock"
-os.environ["LLM_MODEL"] = "mock-gpt-model"
+os.environ["LLM_MODEL"] = "mock-gpt-4o"
 
 from backend.app.core.container import get_container
 from backend.app.ingestion.ingest_pipeline import IngestionPipeline

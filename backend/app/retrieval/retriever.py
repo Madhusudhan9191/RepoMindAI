@@ -48,11 +48,17 @@ class Retriever:
         qdrant_service: QdrantService,
         reranker_service = None,
         compressor = None,
+        bm25_retriever = None,
     ):
         self.embedding_service = embedding_service
         self.qdrant_service = qdrant_service
         self.reranker_service = reranker_service
         self.compressor = compressor
+        if bm25_retriever is None:
+            from backend.app.retrieval.bm25_retriever import BM25Retriever
+            self.bm25_retriever = BM25Retriever()
+        else:
+            self.bm25_retriever = bm25_retriever
 
     def retrieve(
         self,
@@ -105,7 +111,7 @@ class Retriever:
                 use_compressor=config.use_compressor if config else True,
             )
 
-        # --- Stage 1: Candidate Ingestion from Vector DB ---
+        # --- Stage 1: Candidate Ingestion (Dense Qdrant Search + BM25 Lexical Search) ---
         need_vectors = use_mmr
         
         if use_mmr:
@@ -117,11 +123,31 @@ class Retriever:
 
         if telemetry:
             telemetry.start_stage("vector_search")
+
+        # 1A. Qdrant Dense Search
         candidates = self.qdrant_service.search(
             query=query,
             limit=db_limit,
             with_vectors=need_vectors,
         )
+
+        # 1B. BM25 Lexical Search (Candidate Union)
+        if hasattr(self, "bm25_retriever") and self.bm25_retriever and candidates:
+            try:
+                # Ensure BM25 index contains current candidates if not indexed
+                if self.bm25_retriever.doc_count == 0:
+                    self.bm25_retriever.index_chunks([c.payload for c in candidates if c.payload])
+
+                bm25_results = dict(self.bm25_retriever.search(query, top_k=db_limit))
+                for c in candidates:
+                    cid = c.payload.get("id") if c.payload else None
+                    if cid in bm25_results:
+                        c.payload["bm25_score"] = float(bm25_results[cid])
+                    else:
+                        c.payload["bm25_score"] = 0.0
+            except Exception:
+                pass
+
         if telemetry:
             telemetry.end_stage()
             telemetry.set_count("candidates_retrieved", len(candidates))

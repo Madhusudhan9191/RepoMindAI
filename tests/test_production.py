@@ -9,7 +9,10 @@ from backend.app.core.database import init_db, get_db_connection
 from backend.app.core.security import JWT_SECRET, hash_refresh_token
 from backend.app.core.rate_limit import rag_limiter, auth_limiter
 
+import os
+
 def run_tests():
+    os.environ["REQUIRE_AUTH"] = "true"
     print("Running Production Platform and Security tests...")
     init_db()  # Ensure database tables exist before clearing
     client = TestClient(app)
@@ -136,6 +139,7 @@ def run_tests():
 
     # --- Test 6: Rate Limiting sliding window ---
     # Reset limiter statistics
+    rag_limiter.requests_limit = 10
     rag_limiter.history.clear()
     
     # Trigger RAG rate limiter: Default threshold is 10 requests / min.
@@ -165,6 +169,8 @@ def run_tests():
         get_container().close()
     except Exception:
         pass
+    finally:
+        os.environ.pop("REQUIRE_AUTH", None)
 
     print("\nAll Production Platform and Security tests passed successfully!")
 

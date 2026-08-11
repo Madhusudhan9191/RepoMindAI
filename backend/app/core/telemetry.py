@@ -27,6 +27,8 @@ class TelemetryCollector:
             "compressed_context_tokens": 0,
             "prompt_tokens": 0,
             "completion_tokens": 0,
+            "embedding_cache_hits": 0,
+            "embedding_cache_misses": 0,
         }
         
         # Pipeline configuration flags

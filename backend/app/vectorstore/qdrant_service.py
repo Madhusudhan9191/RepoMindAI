@@ -190,6 +190,26 @@ class QdrantService:
 
         return info.points_count
 
+    def delete_chunks_by_path(self, path: str):
+        """
+        Delete all points matching a specific file path (used for incremental ingestion/deletion sync).
+        """
+        try:
+            from qdrant_client.models import Filter, FieldCondition, MatchValue
+            self.client.delete(
+                collection_name=self.COLLECTION_NAME,
+                points_selector=Filter(
+                    must=[
+                        FieldCondition(
+                            key="path",
+                            match=MatchValue(value=path)
+                        )
+                    ]
+                )
+            )
+        except Exception as e:
+            pass
+
     def clear(self):
         """
         Delete all points in the collection. Fallback to recreating the collection

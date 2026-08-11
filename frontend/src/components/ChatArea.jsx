@@ -110,7 +110,7 @@ export default function ChatArea({
                   <div className="markdown-content">
                     <ReactMarkdown
                       components={{
-                        code({ node, inline, className, children, ...props }) {
+                        code({ _node, inline, className, children, ...props }) {
                           const match = /language-(\w+)/.exec(className || "");
                           return !inline && match ? (
                             <pre className={className}>
